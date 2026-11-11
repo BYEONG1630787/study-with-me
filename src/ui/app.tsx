@@ -177,6 +177,7 @@ function Onboarding() {
   if (readOnly) return <ReadOnlyGate />;
   const len = nick.trim().length;
   const ok = len >= 2 && len <= 12 && age && agree;
+  const missing = [len < 2 || len > 12 ? '닉네임 2~12자' : '', !age ? '만 14세 이상 체크' : '', !agree ? '이용 규칙 동의 체크' : ''].filter(Boolean);
   const submit = () => run(() => saveProfile({ nick, color, photo }));
   return (
     <div className="gate onboarding">
@@ -206,6 +207,11 @@ function Onboarding() {
         <Btn type="submit" block size="lg" busy={busy} disabled={!ok} id="ob-start">
           시작하기
         </Btn>
+        {!ok && !busy ? (
+          <p className="hint" id="ob-missing">
+            시작하려면 아직 필요해요: {missing.join(', ')}
+          </p>
+        ) : null}
         <p className="hint">{host === 'firebase' ? '이 브라우저에 자동으로 계정이 만들어져서 비밀번호가 필요 없어요. 늘 쓰는 브라우저에서 열어 주세요.' : mode === 'cloud' ? 'Claude 계정으로 자동으로 구분되기 때문에 비밀번호를 따로 만들지 않아요.' : '지금은 체험 모드예요. 기록이 이 기기의 브라우저에만 저장돼요.'}</p>
       </form>
     </div>
