@@ -17,10 +17,25 @@ function watch(page, tag) {
     if (m.type() !== 'error') return;
     const t = m.text();
     if (/favicon/.test(m.location()?.url ?? '')) return;
+    // 틀린 비밀번호를 일부러 넣는 단계의 400 응답
+    if (/status of 400/.test(t) && /identitytoolkit|accounts:signIn/.test(m.location()?.url ?? '')) return;
     errors.push(`[${tag}] console: ${t}`);
   });
   page.on('pageerror', (e) => errors.push(`[${tag}] pageerror: ${e.message}`));
   return page;
+}
+
+const stamp = Date.now();
+const MINA = { email: `mina${stamp}@example.com`, pw: 'study1234' };
+const JUNHO = { email: `junho${stamp}@example.com`, pw: 'study5678' };
+
+async function signUp(page, who) {
+  await page.locator('#auth').waitFor({ timeout: 15000 });
+  if (await page.locator('#auth-pw2').count() === 0) await page.click('#auth-tab-signup');
+  await page.fill('#auth-email', who.email);
+  await page.fill('#auth-pw', who.pw);
+  await page.fill('#auth-pw2', who.pw);
+  await page.click('#auth-submit');
 }
 
 async function send(page, text) {
@@ -35,7 +50,18 @@ const ctxB = await newContext(browser);
 await stage('!가입과 스터디 만들기 (미나)', async () => {
   const mina = (pages.mina = watch(await ctxA.newPage(), 'mina'));
   await mina.goto(BASE + '/index.html');
+  await mina.locator('#auth-tab-login.on').waitFor({ timeout: 15000 });
+  ok('첫 화면은 로그인');
+  // 틀린 확인 비밀번호
+  await mina.click('#auth-tab-signup');
+  await mina.fill('#auth-email', MINA.email);
+  await mina.fill('#auth-pw', MINA.pw);
+  await mina.fill('#auth-pw2', MINA.pw + 'x');
+  await mina.click('#auth-submit');
+  await see(mina, '비밀번호 확인이 서로 달라요');
+  await signUp(mina, MINA);
   await onboard(mina, '미나');
+  ok('회원가입 → 닉네임 정하기 → 홈');
   await mina.click('#home-create');
   await mina.fill('#st-name', '파이어베이스 스터디');
   await mina.click('#st-submit');
@@ -52,6 +78,8 @@ await stage('!초대 링크로 참여 (준호, 다른 계정)', async () => {
   const junho = (pages.junho = watch(await ctxB.newPage(), 'junho'));
   // 초대 링크 그대로 연다
   await junho.goto(link.trim());
+  await junho.locator('#auth-tab-signup.on').waitFor({ timeout: 15000 });
+  await signUp(junho, JUNHO);
   await onboard(junho, '준호');
   await junho.click('#join-submit');
   await junho.locator('#study-tabs').waitFor();
@@ -82,6 +110,28 @@ await stage('인증 올리기와 친구 피드', async () => {
   const w = await img.evaluate((el) => el.naturalWidth);
   if (!w) throw new Error('인증 사진이 보이지 않음');
   ok('준호의 인증(사진 포함)이 미나 피드에 보임');
+});
+
+await stage('로그아웃하고 다른 기기에서 같은 계정으로 로그인', async () => {
+  const { mina } = pages;
+  await mina.click('#nav-my');
+  await mina.click('#my-logout');
+  await mina.locator('#auth').waitFor({ timeout: 15000 });
+  ok('로그아웃하면 로그인 화면');
+  const ctxC = await newContext(browser);
+  const other = (pages.other = watch(await ctxC.newPage(), 'mina-2'));
+  await other.goto(BASE + '/index.html');
+  await other.locator('#auth').waitFor({ timeout: 15000 });
+  await other.fill('#auth-email', MINA.email);
+  await other.fill('#auth-pw', 'wrongpass');
+  await other.click('#auth-submit');
+  await see(other, '이메일 또는 비밀번호가 맞지 않아요', 8000);
+  await other.fill('#auth-pw', MINA.pw);
+  await other.click('#auth-submit');
+  await other.locator('#nav-home').waitFor({ timeout: 15000 });
+  if (await other.locator('#ob-start').count()) throw new Error('다시 닉네임을 물어봄');
+  await see(other, '파이어베이스 스터디', 8000);
+  ok('다른 기기에서 로그인하면 내 스터디가 그대로 보임');
 });
 
 await stage('새로 고쳐도 같은 사람, 설정 유지', async () => {

@@ -1,9 +1,20 @@
 // GitHub Pages처럼 claude.ai 밖에서 열 때 쓰는 공유 저장소.
 // Firebase Firestore를 platform의 `db`와 같은 모양(DB 타입)으로 감싸고,
-// 사용자는 Firebase 익명 로그인으로 구분한다(브라우저마다 하나의 계정).
+// 사용자는 이메일·비밀번호 계정으로 구분한다.
 
 import { initializeApp, type FirebaseOptions } from 'firebase/app';
-import { connectAuthEmulator, getAuth, onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
+import {
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  deleteUser,
+  getAuth,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+  type Auth,
+  type User,
+} from 'firebase/auth';
 import {
   collection as fsCollection,
   connectFirestoreEmulator,
@@ -205,24 +216,86 @@ export interface FirebaseSession {
   uid: string;
 }
 
-/** Firebase에 익명으로 로그인하고 DB를 돌려준다. 실패하면 null(체험 모드로 넘어간다). */
-export async function connectFirebase(config: FirebaseOptions & { emulator?: string }): Promise<FirebaseSession | null> {
-  try {
-    const app = initializeApp(config);
-    const fs = initializeFirestore(app, { ignoreUndefinedProperties: true });
-    const auth = getAuth(app);
-    if (config.emulator) {
-      // 테스트용: 로컬 에뮬레이터(Firestore 8080, Auth 9099)에 붙는다
-      connectFirestoreEmulator(fs, config.emulator, 8080);
-      connectAuthEmulator(auth, `http://${config.emulator}:9099`, { disableWarnings: true });
-    }
-    const user = await new Promise<User | null>((resolve) => {
-      const off = onAuthStateChanged(auth, (u) => {
-        off();
-        resolve(u);
-      });
+type Cfg = FirebaseOptions & { emulator?: string };
+let inst: { fs: Firestore; auth: Auth } | null = null;
+
+function fb(config: Cfg) {
+  if (inst) return inst;
+  const app = initializeApp(config);
+  const fs = initializeFirestore(app, { ignoreUndefinedProperties: true });
+  const auth = getAuth(app);
+  if (config.emulator) {
+    // 테스트용: 로컬 에뮬레이터(Firestore 8080, Auth 9099)에 붙는다
+    connectFirestoreEmulator(fs, config.emulator, 8080);
+    connectAuthEmulator(auth, `http://${config.emulator}:9099`, { disableWarnings: true });
+  }
+  inst = { fs, auth };
+  return inst;
+}
+
+/** 이 브라우저에 로그인돼 있는 계정. 없으면 null */
+export function currentUser(config: Cfg): Promise<User | null> {
+  const { auth } = fb(config);
+  return new Promise((resolve) => {
+    const off = onAuthStateChanged(auth, (u) => {
+      off();
+      resolve(u);
     });
-    const u = user ?? (await signInAnonymously(auth)).user;
+  });
+}
+
+function authMessage(e: unknown): string {
+  const code = (e as { code?: string } | null)?.code ?? '';
+  switch (code) {
+    case 'auth/invalid-email':
+      return '이메일 주소를 다시 확인해 주세요.';
+    case 'auth/missing-password':
+      return '비밀번호를 적어 주세요.';
+    case 'auth/weak-password':
+      return '비밀번호는 6자 이상으로 만들어 주세요.';
+    case 'auth/email-already-in-use':
+      return '이미 가입된 이메일이에요. 로그인해 주세요.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+    case 'auth/invalid-login-credentials':
+      return '이메일 또는 비밀번호가 맞지 않아요.';
+    case 'auth/too-many-requests':
+      return '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.';
+    case 'auth/network-request-failed':
+      return '인터넷 연결을 확인해 주세요.';
+    case 'auth/operation-not-allowed':
+      return '아직 이메일 가입이 꺼져 있어요. 관리자에게 Firebase에서 이메일/비밀번호 로그인을 켜 달라고 해 주세요.';
+    default:
+      return '잠시 문제가 생겼어요. 다시 시도해 주세요.' + (code ? ` (${code})` : '');
+  }
+}
+
+async function wrapAuth<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    throw new Error(authMessage(e));
+  }
+}
+
+export const signUp = (config: Cfg, email: string, password: string) => wrapAuth(() => createUserWithEmailAndPassword(fb(config).auth, email.trim(), password));
+export const signIn = (config: Cfg, email: string, password: string) => wrapAuth(() => signInWithEmailAndPassword(fb(config).auth, email.trim(), password));
+export const resetPassword = (config: Cfg, email: string) => wrapAuth(() => sendPasswordResetEmail(fb(config).auth, email.trim()));
+export const logOut = (config: Cfg) => signOut(fb(config).auth);
+/** 탈퇴: 계정을 지운다. 로그인한 지 오래돼 거절되면 로그아웃만 한다. */
+export async function deleteAccount(config: Cfg) {
+  const { auth } = fb(config);
+  if (auth.currentUser) await deleteUser(auth.currentUser).catch(() => undefined);
+  await signOut(auth).catch(() => undefined);
+}
+
+/** 로그인한 계정으로 DB를 돌려준다. 로그인하지 않았거나 연결에 실패하면 null */
+export async function connectFirebase(config: Cfg): Promise<FirebaseSession | null> {
+  try {
+    const u = await currentUser(config);
+    if (!u) return null;
+    const { fs } = fb(config);
     const db = {
       doc: (path: string) => makeDoc(fs, path),
       collection: (path: string) => makeCollection(fs, path),

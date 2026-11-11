@@ -16,14 +16,14 @@
 
 ## GitHub Pages 판 (Firebase)
 
-claude.ai 밖에서 링크로 쓸 때는 공유 저장소로 Firebase(Firestore + 익명 로그인)를 씁니다.
+claude.ai 밖에서 링크로 쓸 때는 공유 저장소로 Firebase(Firestore + 이메일·비밀번호 로그인)를 씁니다.
 
-1. Firebase 콘솔에서 프로젝트를 만들고 Firestore(위치 `asia-northeast3`)와 Authentication의 **익명** 로그인을 켭니다.
+1. Firebase 콘솔에서 프로젝트를 만들고 Firestore(위치 `asia-northeast3`)와 Authentication의 **이메일/비밀번호** 로그인을 켭니다.
 2. Firestore → 규칙 탭에 `firestore.rules` 내용을 붙여 넣고 게시합니다.
 3. 웹 앱을 추가해 받은 `firebaseConfig` 값을 `firebase-config.json`에 JSON으로 넣습니다(공개돼도 되는 식별값).
 4. `main`에 올리면 `.github/workflows/pages.yml`이 빌드해서 Pages에 게시합니다. 저장소 Settings → Pages의 Source는 **GitHub Actions**.
 
-계정은 브라우저마다 자동으로 만들어집니다. 다른 기기나 브라우저에서 열면 새 사람으로 시작합니다.
+첫 화면은 로그인·회원가입이고, 가입 뒤 닉네임을 정하면 시작합니다. 같은 이메일로 어느 기기에서든 로그인할 수 있습니다.
 파일 저장(Storage)은 유료 요금제가 필요해 쓰지 않습니다. 인증 사진은 줄여서 Firestore에 넣고, 학습장 자료는 올린 기기에만 저장됩니다.
 
 에뮬레이터 테스트:

@@ -120,7 +120,7 @@ function Toasts() {
 
 // ------------------------------------------------------------------ 시작·가입
 
-function Wordmark({ big }: { big?: boolean }) {
+export function Wordmark({ big }: { big?: boolean }) {
   return (
     <span className={'wordmark' + (big ? ' big' : '')}>
       <span className="wordmark-seal" aria-hidden="true">
@@ -223,7 +223,7 @@ function Onboarding() {
             시작하려면 아직 필요해요: {missing.join(', ')}
           </p>
         ) : null}
-        <p className="hint">{host === 'firebase' ? '이 브라우저에 자동으로 계정이 만들어져서 비밀번호가 필요 없어요. 늘 쓰는 브라우저에서 열어 주세요.' : mode === 'cloud' ? 'Claude 계정으로 자동으로 구분되기 때문에 비밀번호를 따로 만들지 않아요.' : '지금은 체험 모드예요. 기록이 이 기기의 브라우저에만 저장돼요.'}</p>
+        <p className="hint">{host === 'firebase' ? '2단계: 친구들에게 보일 닉네임을 정해 주세요. 다른 기기에서도 같은 이메일로 로그인하면 이어서 쓸 수 있어요.' : mode === 'cloud' ? 'Claude 계정으로 자동으로 구분되기 때문에 비밀번호를 따로 만들지 않아요.' : '지금은 체험 모드예요. 기록이 이 기기의 브라우저에만 저장돼요.'}</p>
       </form>
     </div>
   );

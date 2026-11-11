@@ -7,6 +7,7 @@ import { myCheckins, myStudies } from '../derive';
 import { badgesOf, personalStats, type DayAgg } from '../logic';
 import { addDays, dayOf, dow, fmtDay, fmtMin, monthOf, weekStart } from '../time';
 import { confirmSheet, go, openSheet, resetUi } from '../ui';
+import { FIREBASE_CONFIG } from '../env';
 import { CheckinCard } from './feed';
 import { Avatar, Btn, Icon, Nick, Stamp, useAsync } from './kit';
 
@@ -105,7 +106,15 @@ export function MyPage() {
       okLabel: '탈퇴',
       danger: true,
       onOk: async () => {
-        if (await run(() => withdraw(), '탈퇴했어요')) resetUi();
+        if (await run(() => withdraw(), '탈퇴했어요')) {
+          if (s.host === 'firebase' && FIREBASE_CONFIG) {
+            const { deleteAccount } = await import('../firebase');
+            await deleteAccount(FIREBASE_CONFIG);
+            location.reload();
+            return;
+          }
+          resetUi();
+        }
       },
     });
 
@@ -262,6 +271,24 @@ export function MyPage() {
               <Icon name="right" size={16} />
             </button>
           </li>
+          {s.host === 'firebase' && FIREBASE_CONFIG ? (
+            <li>
+              <button
+                type="button"
+                className="list-row as-btn"
+                id="my-logout"
+                onClick={async () => {
+                  const { logOut } = await import('../firebase');
+                  await logOut(FIREBASE_CONFIG!);
+                  location.reload();
+                }}
+              >
+                <Icon name="link" size={18} />
+                <span className="grow">로그아웃</span>
+                <Icon name="right" size={16} />
+              </button>
+            </li>
+          ) : null}
           {s.mode === 'local' && isForcedLocal() ? (
             <li>
               <button type="button" className="list-row as-btn" onClick={() => run(() => leaveLocal())} id="my-leave-local">
