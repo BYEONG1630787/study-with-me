@@ -2,7 +2,7 @@
 
 import React, { Component, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getState, onEvent, switchToLocal, useApp, type AppEvent } from '../store';
-import { flushPending, normalizeCode, saveProfile } from '../actions';
+import { AppError, flushPending, normalizeCode, saveProfile } from '../actions';
 import { buildNotifs, nickOf, remindDue, totalUnread, unseenNotifs } from '../derive';
 import { APP_NAME } from '../env';
 import { isActiveMember, isEnded } from '../logic';
@@ -175,10 +175,20 @@ function Onboarding() {
   const [agree, setAgree] = useState(false);
   const [busy, run] = useAsync();
   if (readOnly) return <ReadOnlyGate />;
-  const len = nick.trim().length;
+  const len = Array.from(nick.trim()).length;
   const ok = len >= 2 && len <= 12 && age && agree;
   const missing = [len < 2 || len > 12 ? '닉네임 2~12자' : '', !age ? '만 14세 이상 체크' : '', !agree ? '이용 규칙 동의 체크' : ''].filter(Boolean);
-  const submit = () => run(() => saveProfile({ nick, color, photo }));
+  // 한글 입력기(IME)가 마지막 글자를 아직 조합 중이면 상태가 한 박자 늦을 수 있어서, 누른 순간의 입력칸 값을 읽는다
+  const submit = () =>
+    run(() => {
+      const el = document.getElementById('pf-nick') as HTMLInputElement | null;
+      const raw = el ? el.value : nick;
+      if (raw !== nick) setNick(raw);
+      const n = Array.from(raw.trim()).length;
+      if (n < 2 || n > 12) throw new AppError('닉네임은 2~12자로 적어 주세요.');
+      if (!age || !agree) throw new AppError('아래 두 가지에 체크해 주세요.');
+      return saveProfile({ nick: raw, color, photo });
+    });
   return (
     <div className="gate onboarding">
       <Wordmark big />
@@ -187,7 +197,8 @@ function Onboarding() {
         className="card col gap-lg gate-card"
         onSubmit={(e) => {
           e.preventDefault();
-          if (ok) submit();
+          if ((e.nativeEvent as unknown as { isComposing?: boolean }).isComposing) return;
+          submit();
         }}
       >
         <ProfileFields nick={nick} setNick={setNick} color={color} setColor={setColor} photo={photo} setPhoto={setPhoto} />
@@ -204,7 +215,7 @@ function Onboarding() {
             이용 규칙과 개인정보 안내 읽기
           </button>
         </div>
-        <Btn type="submit" block size="lg" busy={busy} disabled={!ok} id="ob-start">
+        <Btn type="submit" block size="lg" busy={busy} id="ob-start">
           시작하기
         </Btn>
         {!ok && !busy ? (

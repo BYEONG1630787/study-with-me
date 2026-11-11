@@ -451,10 +451,10 @@ export function ProfileSheet() {
   const [color, setColor] = useState(me?.color ?? 0);
   const [photo, setPhoto] = useState<string | null>(me?.photo ?? null);
   const [busy, run] = useAsync();
-  const ok = nick.trim().length >= 2 && nick.trim().length <= 12;
   const save = () =>
     run(async () => {
-      await saveProfile({ nick, color, photo });
+      const el = document.getElementById('pf-nick') as HTMLInputElement | null;
+      await saveProfile({ nick: el ? el.value : nick, color, photo });
       closeSheet();
     }, '프로필을 저장했어요');
   return (
@@ -462,7 +462,7 @@ export function ProfileSheet() {
       title="프로필 수정"
       onClose={closeSheet}
       footer={
-        <Btn block size="lg" busy={busy} disabled={!ok} onClick={save} id="pf-save">
+        <Btn block size="lg" busy={busy} onClick={save} id="pf-save">
           저장
         </Btn>
       }
@@ -471,7 +471,7 @@ export function ProfileSheet() {
         className="col gap-lg"
         onSubmit={(e) => {
           e.preventDefault();
-          if (ok) save();
+          if (!(e.nativeEvent as unknown as { isComposing?: boolean }).isComposing) save();
         }}
       >
         <ProfileFields nick={nick} setNick={setNick} color={color} setColor={setColor} photo={photo} setPhoto={setPhoto} />
