@@ -7,6 +7,7 @@ import { localPlatform } from './platform';
 import { boot, restart } from './store';
 import { App, ErrorBoundary } from './ui/app';
 import { AuthScreen } from './ui/auth';
+import { setupNative } from './native';
 
 function runApp(root: Root) {
   root.render(
@@ -42,6 +43,8 @@ async function start(el: HTMLElement) {
   }
   runApp(root);
 }
+
+setupNative();
 
 const el = document.getElementById('root');
 if (el) void start(el);
