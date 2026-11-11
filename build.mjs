@@ -102,7 +102,27 @@ function page(css, js) {
 }
 
 const [css, js] = await Promise.all([styles(), bundle('src/main.tsx')]);
-const html = page(css, js);
+let html = page(css, js);
+// STANDALONE=1: GitHub Pages처럼 플랫폼이 감싸 주지 않는 곳에 올릴 때는 문서 뼈대(문자 집합, 휴대폰 화면 맞춤)를 직접 붙인다
+if (process.env.STANDALONE) {
+  html = [
+    '<!doctype html>',
+    '<html lang="ko">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
+    '<meta name="theme-color" content="#f3f6f5">',
+    '<meta name="apple-mobile-web-app-capable" content="yes">',
+    '<meta name="mobile-web-app-capable" content="yes">',
+    '<style>html,body{margin:0;padding:0;background:#f3f6f5}@media (prefers-color-scheme:dark){html,body{background:#0f141b}}</style>',
+    '</head>',
+    '<body>',
+    html,
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+}
 writeFileSync(join(dist, 'index.html'), html);
 const v = vendor();
 

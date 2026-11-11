@@ -32,7 +32,7 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v5
       - name: Build
-        run: APP_URL="${{ steps.pages.outputs.base_url }}/" npm run build
+        run: STANDALONE=1 APP_URL="${{ steps.pages.outputs.base_url }}/" npm run build
       - name: Prepare site
         run: |
           mkdir -p site/vendor
