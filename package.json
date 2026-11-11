@@ -13,6 +13,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
     "@fontsource/gowun-batang": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans-kr": "^5.3.0",

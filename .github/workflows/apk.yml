@@ -1,0 +1,56 @@
+# main 브랜치에 올리면 안드로이드 앱(APK)을 만들어 Releases에 올린다.
+# 내려받기: https://github.com/<owner>/<repo>/releases/latest/download/study-with-me.apk
+name: APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - name: Build web app
+        run: STANDALONE=1 APP_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" npm run build
+      - name: Prepare web files
+        run: |
+          mkdir -p site/vendor
+          cp dist/index.html site/
+          cp dist/vendor/* site/vendor/
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Rename
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk study-with-me.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "apk-${{ github.run_number }}" study-with-me.apk \
+            --title "스터디 윗미 안드로이드 앱 #${{ github.run_number }}" \
+            --notes "휴대폰에서 study-with-me.apk 를 내려받아 설치하세요. 설치할 때 '출처를 알 수 없는 앱' 허용이 필요할 수 있어요." \
+            --latest
