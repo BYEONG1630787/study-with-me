@@ -1,0 +1,36 @@
+rules_version = '2';
+// 스터디 윗미 Firestore 보안 규칙.
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 이 내용을 그대로 붙여 넣고 게시하세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // 각자의 개인 설정과 학습 자료 목록: 본인만
+    match /data/users/{uid}/{rest=**} {
+      allow read, write: if isMe(uid);
+    }
+
+    // 프로필과 공부 중 상태: 모두 읽고, 본인 것만 쓴다
+    match /profiles/{uid} {
+      allow read: if signedIn();
+      allow write: if isMe(uid);
+    }
+    match /presence/{uid} {
+      allow read: if signedIn();
+      allow write: if isMe(uid);
+    }
+
+    // 스터디, 채팅, 인증, 반응, 사진, 콕 찌르기: 로그인한 사람끼리 함께 쓴다
+    match /studies/{sid} {
+      allow read, write: if signedIn();
+      match /messages/{mid} {
+        allow read, write: if signedIn();
+      }
+    }
+    match /checkins/{id} { allow read, write: if signedIn(); }
+    match /thumbs/{id} { allow read, write: if signedIn(); }
+    match /photodata/{id} { allow read, write: if signedIn(); }
+    match /pokes/{id} { allow read, write: if signedIn(); }
+  }
+}

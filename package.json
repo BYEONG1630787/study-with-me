@@ -1,0 +1,29 @@
+{
+  "name": "study-with-me",
+  "version": "1.0.0",
+  "description": "스터디 윗미: 친구들과 공부를 인증하는 웹앱 (claude.ai Artifact로 게시)",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "build": "node build.mjs",
+    "build:test": "node build.mjs --test",
+    "serve": "node test/server.mjs 4173",
+    "test": "node test/scenario.mjs && node test/time.mjs && node test/modes.mjs && node test/resilience.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@fontsource/gowun-batang": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans-kr": "^5.3.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "esbuild": "^0.24.0",
+    "firebase": "^10.14.1",
+    "pdfjs-dist": "^3.11.174",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  },
+  "private": true
+}

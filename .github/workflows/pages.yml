@@ -1,0 +1,46 @@
+# main 브랜치에 올리면 앱을 빌드해서 GitHub Pages에 게시한다.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Build
+        run: APP_URL="${{ steps.pages.outputs.base_url }}/" npm run build
+      - name: Prepare site
+        run: |
+          mkdir -p site/vendor
+          cp dist/index.html site/
+          cp dist/vendor/* site/vendor/
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
